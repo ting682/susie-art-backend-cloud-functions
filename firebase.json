@@ -5,5 +5,17 @@
       "npm --prefix \"$RESOURCE_DIR\" run build",
       "npm --prefix functions run build"
     ]
+  },
+  "hosting": {
+    "site": "susiewangartapi",
+    "public": "functions/lib",
+    "rewrites": [{
+      "source": "/carts",
+      "function": "carts"
+    },
+    {
+      "source": "/payments",
+      "function": "payments"
+    }]
   }
 }
