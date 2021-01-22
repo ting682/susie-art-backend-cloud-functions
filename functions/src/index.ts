@@ -5,7 +5,7 @@ import * as admin from 'firebase-admin'
 // // Start writing Firebase Functions
 // // https://firebase.google.com/docs/functions/typescript
 //
-admin.initializeApp()
+const ref = admin.initializeApp()
 
 // export const helloWorld = functions.https.onRequest((request, response) => {
 //   functions.logger.info("Hello logs!", {structuredData: true});
@@ -16,7 +16,7 @@ const cors = require('cors')
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Client, Environment, ApiError } = require('square');
-
+import { v4 as uuidv4 } from 'uuid'
 const app = express();
 
 app.use(cors({origin: true}))
@@ -47,12 +47,77 @@ const client = new Client({
   accessToken: functions.config().square.accesstoken,
 });
 
-app.post('/payments', async (req: any, res: any) => {
+app.post('/', async (req: any, res: any) => {
   const requestParams = req.body;
 
-  
-  
   // Charge the customer's card
+  const orderId = uuidv4()
+  let lineItems :any = [];
+  
+  jwt.verify(requestParams.uid, functions.config().jwt.secret, async (err :any , data :any) => {
+    if(err){
+      res.sendStatus(403)
+    } 
+    else if(data.uid){
+      req.uid = data.uid
+
+      
+
+      const cartsRef = admin.database().ref('carts/' + data.uid)
+      cartsRef.once('value').then(async snap => {
+        const cartData = snap.val()
+        
+        let updatedAt;
+        for (const [key, item] of Object.entries(cartData)) {
+          
+          const itemValue:any = item
+          
+          
+
+          if (key === 'updatedAt') {
+            updatedAt = itemValue
+          } else {
+            
+            lineItems.push({
+              quantity: "1", 
+              name: itemValue.item.title,
+              basePriceMoney: {
+                amount: itemValue.item.price,
+                currency: 'USD'
+              }
+            })
+          }
+          
+        }
+
+        const orderRef = admin.database().ref('orders/' + orderId)
+        
+        await orderRef.set({
+          orderId: orderId,
+          lineItems: lineItems,
+          updatedAt: updatedAt,
+          billing: requestParams.billing,
+          shipping: requestParams.shipping,
+          emailAddress: requestParams.emailAddress
+        })
+
+        client.ordersApi.createOrder({
+          order: {
+            locationId: requestParams.location_id,
+            referenceId: orderId,
+            lineItems: lineItems,
+            idempotencyKey: requestParams.idempotency_key
+          }
+        })
+        
+      }).catch(errorData => {
+        res.json({error: errorData})
+      })
+   }
+  })
+  
+ 
+  
   const paymentsApi = client.paymentsApi;
   const requestBody = {
     sourceId: requestParams.nonce,
@@ -60,7 +125,7 @@ app.post('/payments', async (req: any, res: any) => {
       amount: requestParams.amount, // $1.00 charge
       currency: 'USD',
     },
-
+    order_id: orderId,
     locationId: requestParams.location_id,
     idempotencyKey: requestParams.idempotency_key,
   };
@@ -88,13 +153,31 @@ app.post('/payments', async (req: any, res: any) => {
 
 exports.payments = functions.https.onRequest(app)
 
-// import { v4 as uuidv4 } from 'uuid'
-const jwt = require('jsonwebtoken')
-
+const jwt = require('jsonwebtoken');
+const session = require('express-session');
+const FirebaseStore = require('connect-session-firebase')(session);
 const cart = express();
+cart.use(cors({ origin: "http://localhost:3002", credentials: true, preflightContinue: true }));
+const cookieParser = require('cookie-parser');
+cart.use(session({
+    
+    store: new FirebaseStore({
+      database: ref.database(),
+   }),
+   secret: functions.config().jwt.secret,
+   name: '__session',
+   saveUninitialized: true,
+   resave: true,
+    cookie: {
+        secure: true,
+        sameSite: 'none',
+    },
+}))
+// import { v4 as uuidv4 } from 'uuid'
+
+
 cart.use(cors({origin: true, preflightContinue: true}))
 
-const cookieParser = require('cookie-parser');
 cart.use(cookieParser());
 
 cart.set('view engine', 'ejs'); 
@@ -102,33 +185,35 @@ cart.set('view engine', 'ejs');
 cart.use(bodyParser.json());
 cart.use(bodyParser.urlencoded({ extended: false }));
 
-// cart.use(function(req :any, res :any, next :any) {
-//   req.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
-//   req.setHeader('Access-Control-Allow-Credentials', "true")
-//   req.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-//   req.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-//   next();
-// });
+cart.use(function(req :any, res :any, next :any) {
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader('Access-Control-Allow-Credentials', true)
+  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  
+  next();
+});
 
-cart.post('/carts', cors({origin: true}), (req: any, res: any) => {
-
+cart.post('/', async (req: any, res: any) => {
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   const requestParams = req.body;
-
-  const cartsRef = admin.database().ref('carts/' + requestParams.uid)
-
-  cartsRef.set({
-    uid: requestParams.uid,
-    lineItems: requestParams.lineItems,
-  }).then(resp => {
-    
-    const jwtToken = jwt.sign({uid: requestParams.uid,  lineItems: requestParams.lineItems}, functions.config().jwt.secret)
-
-    res.status(200).cookie('authcookie', jwtToken , { maxAge:900000, httpOnly:true }).send({jwtToken})
-    
-  }).catch(err => {
-    res.json({error: err})
-    res.status(500).send()
+  const cartsRef = admin.database().ref('carts/' + requestParams.uid);
+  await cartsRef.update({
+      updatedAt: new Date(),
   })
+  cartsRef.child(requestParams.lineItem.title).set({
+      item: requestParams.lineItem,
+  }).then(resp => {
+      const jwtToken = jwt.sign({ uid: requestParams.uid }, functions.config().jwt.secret);
+      // req.session.jwtToken = jwtToken
+      res.status(200).cookie('authcookie', jwtToken, { maxAge:900000, httpOnly:true, sameSite: 'none', secure: true }).send({ jwtToken });
+        // res.status(200).set('Set-Cookie', `__session=${jwtToken}`).send()
+  }).catch(err => {
+      res.json({ error: err });
+      res.status(500).send();
+  });
 
   
 
@@ -141,32 +226,80 @@ cart.post('/carts', cors({origin: true}), (req: any, res: any) => {
   
 })
 
+cart.use(function(req :any, res :any, next :any) {
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader('Access-Control-Allow-Credentials', true)
+  res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  next();
+});
 
-cart.get('/carts', async (req: any, res: any) => {
+cart.get('/', async (req: any, res: any) => {
 
-  res.render('index.html')
+  // const exampleVar = functions.config().square.accesstoken
+  // res.send('home.ejs', {exampleVar})
+  
+  const authHeader = req.headers.authorization;
+    
+  const token = authHeader.split(' ')[1]
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
 
   // const authCookie = req.cookies.authcookie
+  
+  jwt.verify(token, functions.config().jwt.secret, (err :any , data :any) => {
+    if(err){
+      res.sendStatus(403)
+    } 
+    else if(data.uid){
+      req.uid = data.uid
+      const cartsRef = admin.database().ref('carts/' + data.uid)
+      cartsRef.once('value').then(snap => {
+        res.send(JSON.stringify({lineItems: snap.val()}))
+      }).catch(errorData => {
+        res.json({error: errorData})
+      })
+   }
+  })
 
-  // jwt.verify(authCookie, functions.config().jwt.secret, (err :any, data :any) => {
-  //   if(err){
-  //     res.sendStatus(403)
-  //   } 
-  //   else if(data.uid){
-  //     req.uid = data.uid
 
-  //     const cartsRef = admin.database().ref('carts/' + data.uid)
+})
 
+cart.patch('/', async (req :any, res :any) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  const requestParams = req.body;
 
-  //     cartsRef.once('value').then(snap => {
-  //       res.send(JSON.stringify({lineItems: snap.val().lineItems}))
-  //     }).catch(errorData => {
-  //       res.json({error: errorData})
-  //     })
-      
-  //  }
-  // })
+  const authHeader = req.headers.authorization;
+    
+  const token = authHeader.split(' ')[1]
 
+  jwt.verify(token, functions.config().jwt.secret, async (err :any , data :any) => {
+      if(err){
+        res.sendStatus(403)
+      } 
+      else if(data.uid){
+        req.uid = data.uid
+        const cartsPatchRef = admin.database().ref('carts/' + data.uid)
+        
+        await cartsPatchRef.update({
+            updatedAt: new Date(),
+        })
+        cartsPatchRef.child(requestParams.lineItem).remove().then(async resp => {
+            // const jwtToken = jwt.sign({ uid: requestParams.uid }, functions.config().jwt.secret);
+            await cartsPatchRef.once('value', snap => {
+              res.json({data: snap.val()})
+            })
+            // res.status(200).cookie('authcookie', jwtToken, { maxAge:900000, httpOnly:true, sameSite: 'none', secure: true }).send({ jwtToken });
+        }).catch(errors => {
+            res.json({ error: errors });
+            res.status(500).send();
+        });
+          }
+          })
+
+  
 
 })
 

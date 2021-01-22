@@ -6,16 +6,15 @@
       "npm --prefix functions run build"
     ]
   },
-  "hosting": {
-    "site": "susiewangartapi",
-    "public": "functions/lib",
-    "rewrites": [{
-      "source": "/carts",
-      "function": "carts"
+  
+  "emulators": {
+    "functions": {
+      "host": "https://localhost",
+      "ssl": true,
+      "port": "5002"
     },
-    {
-      "source": "/payments",
-      "function": "payments"
-    }]
+    "database": {
+      "port": "9000"
+    }
   }
 }
