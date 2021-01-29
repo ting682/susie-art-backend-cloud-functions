@@ -5,7 +5,7 @@ import * as admin from 'firebase-admin'
 // // Start writing Firebase Functions
 // // https://firebase.google.com/docs/functions/typescript
 //
-const ref = admin.initializeApp()
+admin.initializeApp()
 
 // admin.initializeApp()
 
@@ -216,8 +216,8 @@ cart.use(bodyParser.json());
 cart.use(bodyParser.urlencoded({ extended: false }));
 
 cart.use(function(req :any, res :any, next :any) {
-  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   res.setHeader('Access-Control-Allow-Credentials', true)
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -226,8 +226,8 @@ cart.use(function(req :any, res :any, next :any) {
 });
 
 cart.post('/', async (req: any, res: any) => {
-  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   
   const requestParams = req.body;
  
@@ -259,8 +259,8 @@ cart.post('/', async (req: any, res: any) => {
 })
 
 cart.use(function(req :any, res :any, next :any) {
-  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   res.setHeader('Access-Control-Allow-Credentials', true)
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -268,8 +268,8 @@ cart.use(function(req :any, res :any, next :any) {
 });
 
 cart.get('/', async (req: any, res: any) => {
-  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   // const exampleVar = functions.config().square.accesstoken
   // res.send('home.ejs', {exampleVar})
   
@@ -299,8 +299,8 @@ cart.get('/', async (req: any, res: any) => {
 })
 
 cart.patch('/', async (req :any, res :any) => {
-  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
-  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
   const requestParams = req.body;
 
   const authHeader = req.headers.authorization;
@@ -340,37 +340,37 @@ cart.patch('/', async (req :any, res :any) => {
 exports.carts = functions.https.onRequest(cart)
 
 
-const nodemailer = require('nodemailer')
+// const nodemailer = require('nodemailer')
 
-const gmailEmail = functions.config().gmail.email;
+// const gmailEmail = functions.config().gmail.email;
 
-const gmailPassword = functions.config().gmail.password;
+// const gmailPassword = functions.config().gmail.password;
 
-const mailTransport = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: gmailEmail,
-    pass: gmailPassword,
-  },
-})
+// const mailTransport = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: gmailEmail,
+//     pass: gmailPassword,
+//   },
+// })
 
-exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
+// exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
   
-  const order = snapshot.val()
+//   const order = snapshot.val()
 
-  const mailOptions = {
-    from: '"Susie Wang Art" <tchung682@gmail.com>',
-    to: order.emailAddress,
-    subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
-    text: 'Thank you for your order. We are processing and will notify you.'
-  }
+//   const mailOptions = {
+//     from: '"Susie Wang Art" <tchung682@gmail.com>',
+//     to: order.emailAddress,
+//     subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
+//     text: 'Thank you for your order. We are processing and will notify you.'
+//   }
 
-  try {
-    await mailTransport.sendMail(mailOptions);
-    console.log('email sent')
-  } catch (error) {
-    console.error("Error ", error)
-  }
+//   try {
+//     await mailTransport.sendMail(mailOptions);
+//     console.log('email sent')
+//   } catch (error) {
+//     console.error("Error ", error)
+//   }
 
-})
+// })
