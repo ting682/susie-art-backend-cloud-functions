@@ -7,6 +7,8 @@ import * as admin from 'firebase-admin'
 //
 const ref = admin.initializeApp()
 
+// admin.initializeApp()
+
 // export const helloWorld = functions.https.onRequest((request, response) => {
 //   functions.logger.info("Hello logs!", {structuredData: true});
 //     response.send("hello again!")
@@ -54,70 +56,6 @@ app.post('/', async (req: any, res: any) => {
   const orderId = uuidv4()
   let lineItems :any = [];
   
-  jwt.verify(requestParams.uid, functions.config().jwt.secret, async (err :any , data :any) => {
-    if(err){
-      res.sendStatus(403)
-    } 
-    else if(data.uid){
-      req.uid = data.uid
-
-      
-
-      const cartsRef = admin.database().ref('carts/' + data.uid)
-      cartsRef.once('value').then(async snap => {
-        const cartData = snap.val()
-        
-        let updatedAt;
-        for (const [key, item] of Object.entries(cartData)) {
-          
-          const itemValue:any = item
-          
-          
-
-          if (key === 'updatedAt') {
-            updatedAt = itemValue
-          } else {
-            
-            lineItems.push({
-              quantity: "1", 
-              name: itemValue.item.title,
-              basePriceMoney: {
-                amount: itemValue.item.price,
-                currency: 'USD'
-              }
-            })
-          }
-          
-        }
-
-        const orderRef = admin.database().ref('orders/' + orderId)
-        
-        await orderRef.set({
-          orderId: orderId,
-          lineItems: lineItems,
-          updatedAt: updatedAt,
-          billing: requestParams.billing,
-          shipping: requestParams.shipping,
-          emailAddress: requestParams.emailAddress
-        })
-
-        client.ordersApi.createOrder({
-          order: {
-            locationId: requestParams.location_id,
-            referenceId: orderId,
-            lineItems: lineItems,
-            idempotencyKey: requestParams.idempotency_key
-          }
-        })
-        
-      }).catch(errorData => {
-        res.json({error: errorData})
-      })
-   }
-  })
-  
- 
-  
   const paymentsApi = client.paymentsApi;
   const requestBody = {
     sourceId: requestParams.nonce,
@@ -128,6 +66,25 @@ app.post('/', async (req: any, res: any) => {
     order_id: orderId,
     locationId: requestParams.location_id,
     idempotencyKey: requestParams.idempotency_key,
+    buyer_email_address: requestParams.emailAddress,
+    billing_address: {
+      first_name: requestParams.billing.firstName,
+      last_name: requestParams.billing.lastName,
+      address_1: requestParams.billing.address1,
+      address_2: requestParams.billing.address2,
+      locality: requestParams.billing.city,
+      postal_code: requestParams.billing.zip
+    },
+    shipping_address: {
+      first_name: requestParams.shipping.firstName,
+      last_name: requestParams.shipping.lastName,
+      address_1: requestParams.shipping.address1,
+      address_2: requestParams.shipping.address2,
+      locality: requestParams.shipping.city,
+      postal_code: requestParams.shipping.zip
+    },
+    statement_description_identifier: orderId,
+    verification_token: requestParams.buyerVerificationToken
   };
 
   try {
@@ -136,6 +93,77 @@ app.post('/', async (req: any, res: any) => {
       'title': 'Payment Successful',
       'result': response.result,
     });
+
+    jwt.verify(requestParams.uid, functions.config().jwt.secret, async (err :any , data :any) => {
+      if(err){
+        res.sendStatus(403)
+      } 
+      else if(data.uid){
+        req.uid = data.uid
+  
+        
+  
+        const cartsRef = admin.database().ref('carts/' + data.uid)
+        cartsRef.once('value').then(async snap => {
+          const cartData = snap.val()
+          
+          let updatedAt;
+          for (const [key, item] of Object.entries(cartData)) {
+            
+            const itemValue:any = item
+            
+            
+  
+            if (key === 'updatedAt') {
+              updatedAt = itemValue
+            } else {
+              
+              lineItems.push({
+                quantity: "1", 
+                name: itemValue.item.title,
+                basePriceMoney: {
+                  amount: itemValue.item.price,
+                  currency: 'USD'
+                }
+              })
+            }
+            
+          }
+  
+          
+  
+          client.ordersApi.createOrder({
+            order: {
+              locationId: requestParams.location_id,
+              referenceId: response.result.payment.orderId,
+              lineItems: lineItems,
+              idempotencyKey: requestParams.idempotency_key
+            }
+          })
+          
+          const orderRef = admin.database().ref('orders/' + orderId)
+        
+          await orderRef.set({
+            squareOrderId: response.result.payment.orderId,
+            orderId: orderId,
+            lineItems: lineItems,
+            squareUpdatedAt: response.result.payment.updatedAt,
+            updatedAt: updatedAt,
+            billing: requestParams.billing,
+            shipping: requestParams.shipping,
+            emailAddress: requestParams.emailAddress,
+            squarePaymentId: response.result.payment.id,
+            receiptNumber: response.result.payment.receiptNumber,
+            receiptUrl: response.result.payment.receiptUrl
+          })
+
+        }).catch(errorData => {
+          res.json({error: errorData})
+        })
+     }
+    })
+
+    
   } catch(error) {
     let errorResult = null;
     if (error instanceof ApiError) {
@@ -154,26 +182,28 @@ app.post('/', async (req: any, res: any) => {
 exports.payments = functions.https.onRequest(app)
 
 const jwt = require('jsonwebtoken');
-const session = require('express-session');
-const FirebaseStore = require('connect-session-firebase')(session);
+// const session = require('express-session');
+// const FirebaseStore = require('connect-session-firebase')(session);
 const cart = express();
 cart.use(cors({ origin: "http://localhost:3002", credentials: true, preflightContinue: true }));
 const cookieParser = require('cookie-parser');
-cart.use(session({
+// cart.use(session({
     
-    store: new FirebaseStore({
-      database: ref.database(),
-   }),
-   secret: functions.config().jwt.secret,
-   name: '__session',
-   saveUninitialized: true,
-   resave: true,
-    cookie: {
-        secure: true,
-        sameSite: 'none',
-    },
-}))
+//     store: new FirebaseStore({
+//       database: ref.database(),
+//    }),
+//    secret: functions.config().jwt.secret,
+//    name: '__session',
+//    saveUninitialized: true,
+//    resave: true,
+//     cookie: {
+//       maxAge: 50000,
+//       secure: true,
+//       sameSite: 'none',
+//     },
+// }))
 // import { v4 as uuidv4 } from 'uuid'
+
 
 
 cart.use(cors({origin: true, preflightContinue: true}))
@@ -186,8 +216,8 @@ cart.use(bodyParser.json());
 cart.use(bodyParser.urlencoded({ extended: false }));
 
 cart.use(function(req :any, res :any, next :any) {
-  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   res.setHeader('Access-Control-Allow-Credentials', true)
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -196,9 +226,11 @@ cart.use(function(req :any, res :any, next :any) {
 });
 
 cart.post('/', async (req: any, res: any) => {
-  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  
   const requestParams = req.body;
+ 
   const cartsRef = admin.database().ref('carts/' + requestParams.uid);
   await cartsRef.update({
       updatedAt: new Date(),
@@ -227,8 +259,8 @@ cart.post('/', async (req: any, res: any) => {
 })
 
 cart.use(function(req :any, res :any, next :any) {
-  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   res.setHeader('Access-Control-Allow-Credentials', true)
   res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -236,15 +268,15 @@ cart.use(function(req :any, res :any, next :any) {
 });
 
 cart.get('/', async (req: any, res: any) => {
-
+  // res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
   // const exampleVar = functions.config().square.accesstoken
   // res.send('home.ejs', {exampleVar})
   
   const authHeader = req.headers.authorization;
     
   const token = authHeader.split(' ')[1]
-  res.setHeader("Access-Control-Allow-Origin", "https://susie-wang-art.web.app");
-  // res.setHeader("Access-Control-Allow-Origin", "http://localhost:3002");
+  
 
   // const authCookie = req.cookies.authcookie
   
@@ -306,3 +338,39 @@ cart.patch('/', async (req :any, res :any) => {
 // const corsHandler = cors({origin: "http://localhost:3002", credentials: true})
 
 exports.carts = functions.https.onRequest(cart)
+
+
+const nodemailer = require('nodemailer')
+
+const gmailEmail = functions.config().gmail.email;
+
+const gmailPassword = functions.config().gmail.password;
+
+const mailTransport = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: gmailEmail,
+    pass: gmailPassword,
+  },
+})
+
+exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
+
+  
+  const order = snapshot.val()
+
+  const mailOptions = {
+    from: '"Susie Wang Art" <tchung682@gmail.com>',
+    to: order.emailAddress,
+    subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
+    text: 'Thank you for your order. We are processing and will notify you.'
+  }
+
+  try {
+    await mailTransport.sendMail(mailOptions);
+    console.log('email sent')
+  } catch (error) {
+    console.error("Error ", error)
+  }
+
+})
