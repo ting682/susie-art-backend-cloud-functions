@@ -340,37 +340,37 @@ cart.patch('/', async (req :any, res :any) => {
 exports.carts = functions.https.onRequest(cart)
 
 
-// const nodemailer = require('nodemailer')
+const nodemailer = require('nodemailer')
 
-// const gmailEmail = functions.config().gmail.email;
+const gmailEmail = functions.config().gmail.email;
 
-// const gmailPassword = functions.config().gmail.password;
+const gmailPassword = functions.config().gmail.password;
 
-// const mailTransport = nodemailer.createTransport({
-//   service: 'gmail',
-//   auth: {
-//     user: gmailEmail,
-//     pass: gmailPassword,
-//   },
-// })
+const mailTransport = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: gmailEmail,
+    pass: gmailPassword,
+  },
+})
 
-// exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
+exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
   
-//   const order = snapshot.val()
+  const order = snapshot.val()
 
-//   const mailOptions = {
-//     from: '"Susie Wang Art" <tchung682@gmail.com>',
-//     to: order.emailAddress,
-//     subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
-//     text: 'Thank you for your order. We are processing and will notify you.'
-//   }
+  const mailOptions = {
+    from: 'Susie Wang art',
+    to: order.emailAddress,
+    subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
+    text: 'Thank you for your order. We are processing and will notify you.'
+  }
 
-//   try {
-//     await mailTransport.sendMail(mailOptions);
-//     console.log('email sent')
-//   } catch (error) {
-//     console.error("Error ", error)
-//   }
+  try {
+    await mailTransport.sendMail(mailOptions);
+    console.log('email sent')
+  } catch (error) {
+    console.error("Error ", error)
+  }
 
-// })
+})

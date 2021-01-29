@@ -30,6 +30,7 @@
     "jsonwebtoken": "^8.5.1",
     "request": "^2.88.2",
     "square": "^8.0.1",
+    "nodemailer": "^6.4.17",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
@@ -40,7 +41,6 @@
     "eslint": "^7.6.0",
     "eslint-plugin-import": "^2.22.0",
     "firebase-functions-test": "^0.2.0",
-    "nodemailer": "^6.4.17",
     "typescript": "^3.8.0"
   },
   "private": true
