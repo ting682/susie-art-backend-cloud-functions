@@ -342,31 +342,50 @@ exports.carts = functions.https.onRequest(cart)
 
 const nodemailer = require('nodemailer')
 
+const { google } = require('googleapis')
+
 const gmailEmail = functions.config().gmail.email;
 
 const gmailPassword = functions.config().gmail.password;
 
-const mailTransport = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: gmailEmail,
-    pass: gmailPassword,
-  },
-})
+
+
+const oAuth2Client = new google.auth.OAuth2(functions.config().google.clientid, functions.config().google.clientsecret, functions.config().google.redirecturi)
+
+oAuth2Client.setCredentials({refresh_token: functions.config().google.refreshtoken})
 
 exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
+  const accessToken = await oAuth2Client.getAccessToken()
+
+  const mailTransport = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    type: 'OAuth2',
+    clientId: functions.config().google.clientid,
+    clientSecret: functions.config().google.clientsecret,
+    refreshToken: functions.config().google.refreshtoken,
+    accessToken: accessToken,
+    user: gmailEmail,
+    pass: gmailPassword,
+  },
+  })
+
   
+
   const order = snapshot.val()
 
   const mailOptions = {
-    from: 'Susie Wang art',
+    from: 'Susie Wang art <info@susieart.com>',
     to: order.emailAddress,
     subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
     text: 'Thank you for your order. We are processing and will notify you.'
   }
 
   try {
+
+    
+
     await mailTransport.sendMail(mailOptions);
     console.log('email sent')
   } catch (error) {
