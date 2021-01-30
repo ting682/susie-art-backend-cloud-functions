@@ -342,33 +342,34 @@ exports.carts = functions.https.onRequest(cart)
 
 const nodemailer = require('nodemailer')
 
-const { google } = require('googleapis')
+// const { google } = require('googleapis')
 
 const gmailEmail = functions.config().gmail.email;
 
 const gmailPassword = functions.config().gmail.password;
 
+// const oAuth2Client = new google.auth.OAuth2(functions.config().google.clientid, functions.config().google.clientsecret, functions.config().google.redirecturi)
 
-
-const oAuth2Client = new google.auth.OAuth2(functions.config().google.clientid, functions.config().google.clientsecret, functions.config().google.redirecturi)
-
-oAuth2Client.setCredentials({refresh_token: functions.config().google.refreshtoken})
+// oAuth2Client.setCredentials({refresh_token: functions.config().google.refreshtoken})
 
 exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
-  const accessToken = await oAuth2Client.getAccessToken()
+  // const accessToken = await oAuth2Client.getAccessToken()
 
   const mailTransport = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    type: 'OAuth2',
-    clientId: functions.config().google.clientid,
-    clientSecret: functions.config().google.clientsecret,
-    refreshToken: functions.config().google.refreshtoken,
-    accessToken: accessToken,
+    // type: 'OAuth2',
+    // clientId: functions.config().google.clientid,
+    // clientSecret: functions.config().google.clientsecret,
+    // refreshToken: functions.config().google.refreshtoken,
+    // accessToken: accessToken,
     user: gmailEmail,
     pass: gmailPassword,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
   })
 
   
