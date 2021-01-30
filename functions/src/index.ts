@@ -344,40 +344,70 @@ const nodemailer = require('nodemailer')
 
 // const { google } = require('googleapis')
 
-const gmailEmail = functions.config().gmail.email;
+const aws = require('aws-sdk')
 
-const gmailPassword = functions.config().gmail.password;
+// const gmailEmail = functions.config().gmail.email;
+
+// const gmailPassword = functions.config().gmail.password;
 
 // const oAuth2Client = new google.auth.OAuth2(functions.config().google.clientid, functions.config().google.clientsecret, functions.config().google.redirecturi)
 
 // oAuth2Client.setCredentials({refresh_token: functions.config().google.refreshtoken})
 
+aws.config.update({
+  accessKeyId: functions.config().aws.accesskeyid,
+  secretAccessKey: functions.config().aws.secretaccesskey,
+  region: "us-east-1"
+})
+
 exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
   // const accessToken = await oAuth2Client.getAccessToken()
 
-  const mailTransport = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    // type: 'OAuth2',
-    // clientId: functions.config().google.clientid,
-    // clientSecret: functions.config().google.clientsecret,
-    // refreshToken: functions.config().google.refreshtoken,
-    // accessToken: accessToken,
-    user: gmailEmail,
-    pass: gmailPassword,
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
+  // const mailTransport = nodemailer.createTransport({
+  // service: 'gmail',
+  // auth: {
+  //   // type: 'OAuth2',
+  //   // clientId: functions.config().google.clientid,
+  //   // clientSecret: functions.config().google.clientsecret,
+  //   // refreshToken: functions.config().google.refreshtoken,
+  //   // accessToken: accessToken,
+  //   user: gmailEmail,
+  //   pass: gmailPassword,
+  // },
+  // tls: {
+  //   rejectUnauthorized: false
+  // }
+  // })
+
+  let ses = new aws.SES({
+    apiVersion: '2010-12-01'
   })
 
-  
+  var params = {
+    Template: { 
+      TemplateName: 'EmailOrderConfirmation', 
+      HtmlPart: 'Susie Art Order Confirmation {{orderId}}',
+      SubjectPart: '<h1>Hello {{name}},</h1><p>{{favoriteanimal}}.</p>',
+      TextPart: '<h1>Hello {{name}},</h1><p>Your favorite animal is {{favoriteanimal}}.</p>'
+    }
+  };
+
+  ses.createTemplate(params, function(err: any, data: any) {
+    if (err) console.log(err, err.stack); // an error occurred
+    else     console.log(data);           // successful response
+  });
+
+  let transporter = nodemailer.createTransport({
+    SES: new aws.SES({
+      apiVersion: '2010-12-01'
+    })
+  })
 
   const order = snapshot.val()
 
   const mailOptions = {
-    from: 'Susie Wang art <info@susieart.com>',
+    from: 'Susie Wang art <tchung682@gmail.com>',
     to: order.emailAddress,
     subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
     text: 'Thank you for your order. We are processing and will notify you.'
@@ -385,9 +415,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
 
   try {
 
-    
-
-    await mailTransport.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
     console.log('email sent')
   } catch (error) {
     console.error("Error ", error)
