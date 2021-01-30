@@ -19,6 +19,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { Client, Environment, ApiError } = require('square');
 import { v4 as uuidv4 } from 'uuid'
+import { string } from 'square/dist/schema';
 const app = express();
 
 app.use(cors({origin: true}))
@@ -137,8 +138,8 @@ app.post('/', async (req: any, res: any) => {
               locationId: requestParams.location_id,
               referenceId: response.result.payment.orderId,
               lineItems: lineItems,
-              idempotencyKey: requestParams.idempotency_key
-            }
+              idempotencyKey: requestParams.idempotency_key,
+            },
           })
           
           const orderRef = admin.database().ref('orders/' + orderId)
@@ -154,7 +155,7 @@ app.post('/', async (req: any, res: any) => {
             emailAddress: requestParams.emailAddress,
             squarePaymentId: response.result.payment.id,
             receiptNumber: response.result.payment.receiptNumber,
-            receiptUrl: response.result.payment.receiptUrl
+            receiptUrl: response.result.payment.receiptUrl,
           })
 
         }).catch(errorData => {
@@ -340,11 +341,11 @@ cart.patch('/', async (req :any, res :any) => {
 exports.carts = functions.https.onRequest(cart)
 
 
-const nodemailer = require('nodemailer')
+// const nodemailer = require('nodemailer')
 
 // const { google } = require('googleapis')
 
-const aws = require('aws-sdk')
+// const aws = require('aws-sdk')
 
 // const gmailEmail = functions.config().gmail.email;
 
@@ -354,14 +355,66 @@ const aws = require('aws-sdk')
 
 // oAuth2Client.setCredentials({refresh_token: functions.config().google.refreshtoken})
 
-aws.config.update({
-  accessKeyId: functions.config().aws.accesskeyid,
-  secretAccessKey: functions.config().aws.secretaccesskey,
-  region: "us-east-1"
-})
+// aws.config.update({
+//   accessKeyId: functions.config().aws.accesskeyid,
+//   secretAccessKey: functions.config().aws.secretaccesskey,
+//   region: "us-east-1"
+// })
+
+const mailgun = require("mailgun-js");
+
+const DOMAIN = "sandbox33c8b0872ffa4b329818517167470c60.mailgun.org";
 
 exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}').onCreate(async (snapshot, context) => {
 
+  const mg = mailgun({apiKey: functions.config().mailgun.apikey, domain: DOMAIN});
+
+  //to: order.emailAddress,
+
+  const order = snapshot.val()
+
+  let orderItemRows:string = ``
+
+  order.lineItems.map((item :any) => {
+
+    orderItemRows += `<tr>
+                        <td>` +
+                          item.name +
+                        `</td>` +
+                        `<td>` +
+                          item.basePriceMoney.amount +
+                        `</td>` +
+                      `</tr>`;
+    
+  })
+
+  // let orderTable = `<table>
+  //                     <tr>
+  //                       <th>
+  //                         Item Name
+  //                       </th>
+  //                       <th>
+  //                         Price
+  //                       </th>
+  //                     </tr>` + 
+                      
+  //                     `</table>`
+
+  const data = {
+    from: "Susie Wang art  <postmaster@sandbox33c8b0872ffa4b329818517167470c60.mailgun.org>",
+    to: "tchung682@gmail.com",
+    subject: 'Order for Susie Wang Art confirmation email',
+    text: 'Thank you for your order.' + context.params.orderId,
+    html: '<h1>Susie Wang Art</h1>'
+  };
+
+  mg.messages().send(data, function (error :any, body :any) {
+    if (error) {
+      console.log("error ", error)
+    }
+    console.log(body);
+  });
+  
   // const accessToken = await oAuth2Client.getAccessToken()
 
   // const mailTransport = nodemailer.createTransport({
@@ -380,45 +433,45 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
   // }
   // })
 
-  let ses = new aws.SES({
-    apiVersion: '2010-12-01'
-  })
+  // let ses = new aws.SES({
+  //   apiVersion: '2010-12-01'
+  // })
 
-  var params = {
-    Template: { 
-      TemplateName: 'EmailOrderConfirmation', 
-      HtmlPart: 'Susie Art Order Confirmation {{orderId}}',
-      SubjectPart: '<h1>Hello {{name}},</h1><p>{{favoriteanimal}}.</p>',
-      TextPart: '<h1>Hello {{name}},</h1><p>Your favorite animal is {{favoriteanimal}}.</p>'
-    }
-  };
+  // var params = {
+  //   Template: { 
+  //     TemplateName: 'EmailOrderConfirmation', 
+  //     HtmlPart: 'Susie Art Order Confirmation {{orderId}}',
+  //     SubjectPart: '<h1>Hello {{name}},</h1><p>{{favoriteanimal}}.</p>',
+  //     TextPart: '<h1>Hello {{name}},</h1><p>Your favorite animal is {{favoriteanimal}}.</p>'
+  //   }
+  // };
 
-  ses.createTemplate(params, function(err: any, data: any) {
-    if (err) console.log(err, err.stack); // an error occurred
-    else     console.log(data);           // successful response
-  });
+  // ses.createTemplate(params, function(err: any, data: any) {
+  //   if (err) console.log(err, err.stack); // an error occurred
+  //   else     console.log(data);           // successful response
+  // });
 
-  let transporter = nodemailer.createTransport({
-    SES: new aws.SES({
-      apiVersion: '2010-12-01'
-    })
-  })
+  // let transporter = nodemailer.createTransport({
+  //   SES: new aws.SES({
+  //     apiVersion: '2010-12-01'
+  //   })
+  // })
 
-  const order = snapshot.val()
+  // const order = snapshot.val()
 
-  const mailOptions = {
-    from: 'Susie Wang art <tchung682@gmail.com>',
-    to: order.emailAddress,
-    subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
-    text: 'Thank you for your order. We are processing and will notify you.'
-  }
+  // const mailOptions = {
+  //   from: 'Susie Wang art <tchung682@gmail.com>',
+  //   to: order.emailAddress,
+  //   subject: 'Order for Susie Wang Art ' + context.params.orderId + ' confirmation email',
+  //   text: 'Thank you for your order. We are processing and will notify you.'
+  // }
 
-  try {
+  // try {
 
-    await transporter.sendMail(mailOptions);
-    console.log('email sent')
-  } catch (error) {
-    console.error("Error ", error)
-  }
+  //   await transporter.sendMail(mailOptions);
+  //   console.log('email sent')
+  // } catch (error) {
+  //   console.error("Error ", error)
+  // }
 
 })
