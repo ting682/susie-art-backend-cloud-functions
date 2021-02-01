@@ -73,7 +73,7 @@ app.post('/', async (req: any, res: any) => {
       address_1: requestParams.billing.address1,
       address_2: requestParams.billing.address2,
       locality: requestParams.billing.city,
-      postal_code: requestParams.billing.zip
+      postal_code: requestParams.billing.zip,
     },
     shipping_address: {
       first_name: requestParams.shipping.firstName,
@@ -81,10 +81,10 @@ app.post('/', async (req: any, res: any) => {
       address_1: requestParams.shipping.address1,
       address_2: requestParams.shipping.address2,
       locality: requestParams.shipping.city,
-      postal_code: requestParams.shipping.zip
+      postal_code: requestParams.shipping.zip,
     },
     statement_description_identifier: orderId,
-    verification_token: requestParams.buyerVerificationToken
+    verification_token: requestParams.buyerVerificationToken,
   };
 
   try {
@@ -127,7 +127,7 @@ app.post('/', async (req: any, res: any) => {
                 basePriceMoney: {
                   amount: itemValue.item.price,
                   currency: 'USD',
-                }
+                },
               })
             }
             
@@ -153,6 +153,7 @@ app.post('/', async (req: any, res: any) => {
             squareUpdatedAt: response.result.payment.updatedAt,
             updatedAt: updatedAt,
             billing: requestParams.billing,
+            totalPrice: requestParams.amount,
             shipping: requestParams.shipping,
             emailAddress: requestParams.emailAddress,
             squarePaymentId: response.result.payment.id,
@@ -395,9 +396,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
                   </tr>
                 </table>
                 <table width="405" border="0" cellspacing="0" cellpadding="0" align="left" style="width:405px;" class="em_wrapper">
-                  <tr>
-                    <td height="16" style="height:16px; font-size:1px; line-height:1px;">&nbsp;</td>
-                  </tr>
+                  
                   <tr>
                     <td class="em_grey" align="left" valign="top" style="font-family: Arial, sans-serif; font-size: 18px; line-height: 22px; color:#434343; font-weight:bold;">${item.name}</td>
                   </tr>
@@ -425,7 +424,11 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
           </tr>
         </table>
     </td>
-  </tr>`
+  </tr>
+  <tr>
+    <td height="25" style="height:25px;" class="em_h10">&nbsp;</td>
+  </tr>
+  `
     
 
   })
@@ -491,7 +494,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
                   <td height="25" style="height:25px;" class="em_h10">&nbsp;</td>
                 </tr>
                 <tr>
-                  <td valign="top" align="center"><img src="/assets/pilot/images/templates/cat_1.jpg" width="380" height="200" class="em_full_img2" alt="Alt tag goes here" border="0" style="display:block; max-width:380px; font-family:Arial, sans-serif; font-size:17px; line-height:20px; color:#000000; font-weight:bold;" /></td>
+                  <td valign="top" align="center"><img src="https://firebasestorage.googleapis.com/v0/b/susie-wang-art.appspot.com/o/logo%2Fsusie_wang_art_logo.png?alt=media&token=780fecd0-0bdd-48f6-997a-442085a2543d" width="200" height="200" class="em_full_img2" alt="Susie Wang Art Logo" border="0" style="display:block; max-width:380px; font-family:Arial, sans-serif; font-size:17px; line-height:20px; color:#000000; font-weight:bold;" /></td>
                 </tr>
                 <tr>
                   <td height="22" style="height:22px;" class="em_h20">&nbsp;</td>
@@ -547,7 +550,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
                 </tr>
   
                 <tr>
-                  <td class="em_grey" align="center" valign="top" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color:#434343;">${order.billing.name}<br />
+                  <td class="em_grey" align="center" valign="top" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 24px; color:#434343;">${order.billing.firstName} ${order.billing.lastName}<br />
   ${order.billing.address1}<br />${order.billing.address2}<br />${order.billing.city}, ${order.billing.state} ${order.billing.zip}
   </td>
                 </tr>
@@ -604,7 +607,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
                           <td>&nbsp;</td>
                           <td class="em_grey" width="100" align="right" valign="top" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 20px; color:#434343; width:100px; font-weight:bold;">Total</td>
                           <td width="20" style="width:20px; font-size:0px; line-height:0px;"></td>
-                          <td width="100" class="em_grey" align="right" valign="top" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 20px; color:#434343; width:100px; font-weight:bold;">$926.50</td>
+                          <td width="100" class="em_grey" align="right" valign="top" style="font-family: Arial, sans-serif; font-size: 16px; line-height: 20px; color:#434343; width:100px; font-weight:bold;">$${order.totalPrice/100}.${order.totalPrice % 100}</td>
                         </tr>
                       </table>
                   </td>
@@ -714,7 +717,7 @@ exports.sendOrderEmailConfirmation = functions.database.ref('/orders/{orderId}')
     to: "tchung682@gmail.com",
     subject: 'Order for Susie Wang Art confirmation email',
     text: 'Thank you for your order.' + context.params.orderId,
-    html: '<h1>Susie Wang Art</h1>' + orderhtml
+    html: '<h1>Susie Wang Art</h1>' + orderhtml,
   };
 
   mg.messages().send(data, function (error :any, body :any) {
