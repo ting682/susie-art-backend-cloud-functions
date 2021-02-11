@@ -153,6 +153,7 @@ app.post('/', async (req: any, res: any) => {
             squareUpdatedAt: response.result.payment.updatedAt,
             updatedAt: updatedAt,
             billing: requestParams.billing,
+            orderLocaleDate: requestParams.orderLocaleDate,
             totalPrice: requestParams.amount,
             shipping: requestParams.shipping,
             emailAddress: requestParams.emailAddress,
